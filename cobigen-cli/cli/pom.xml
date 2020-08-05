@@ -156,7 +156,7 @@
       </plugin>
 
       <!-- Building a Maven project that is used on the tests -->
-      <plugin>
+      <!-- plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.6.0</version>
@@ -176,7 +176,7 @@
             <argument>install</argument>
           </arguments>
         </configuration>
-      </plugin>
+      </plugin -->
 
       <!-- Run tests using the java-agent -->
       <plugin>

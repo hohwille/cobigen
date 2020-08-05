@@ -15,31 +15,10 @@
   <modules>
     <module>class-loader-agent</module>
     <module>cli</module>
+    <module>cli-assembly</module>
   </modules>
 
   <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <configuration>
-      		<descriptors>
-        		<descriptor>assembly.xml</descriptor>
-     		</descriptors>
-			<finalName>cobigen-cli</finalName>
-    	  </configuration>
-		  <!-- executions>
-			<execution>
-				<phase>package</phase>
-				<goals>
-					<goal>single</goal>
-				</goals>
-			</execution>
-		  </executions -->
-        </plugin>
-      </plugins>
-    </pluginManagement>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
