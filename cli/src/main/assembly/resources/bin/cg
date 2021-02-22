@@ -1,0 +1,39 @@
+#!/bin/bash
+function addToClasspath() {
+  if [ ! -f "$1" ]
+  then
+    return 1
+  fi
+  while [ -f "$1" ]
+  do
+    if [ -z "$CLASSPATH" ]
+    then
+      CLASSPATH="$1"
+    else
+      CLASSPATH="$CLASSPATH;$1"
+    fi
+    shift
+  done
+  return 0
+}
+MY_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}/.." )" && pwd )"
+CLASSPATH=""
+addToClasspath "$MY_SCRIPT_DIR"/lib/*.jar
+addToClasspath "$MY_SCRIPT_DIR"/plugins/*.jar
+TEMPLATES_DIR="$MY_SCRIPT_DIR/../cobigen-templates"
+if [ ! -d "$TEMPLATES_DIR ]
+then
+  TEMPLATES_DIR="$MY_SCRIPT_DIR/templates"
+fi
+if [ -d "$TEMPLATES_DIR/CobiGen_Templates" ]
+then
+  CLASSPATH="$CLASSPATH;$TEMPLATES_DIR/CobiGen_Templates"
+else
+  addToClasspath "$TEMPLATES_DIR"/*.jar
+fi
+if [ -z "$1" ]
+then
+  java -cp "$CLASSPATH" com.devonfw.cobigen.cli.CobiGenCLI -help
+else
+  java -cp "$CLASSPATH" com.devonfw.cobigen.cli.CobiGenCLI "$@"
+fi

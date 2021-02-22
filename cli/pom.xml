@@ -1,0 +1,136 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>cobigen-cli</artifactId>
+  <version>2020.12.002-SNAPSHOT</version>
+  <name>cobigen-cli</name>
+  <description>Command Line Interface for CobiGen</description>
+
+  <parent>
+    <groupId>com.devonfw.cobigen</groupId>
+    <artifactId>master-parent</artifactId>
+    <version>dev-SNAPSHOT</version>
+  </parent>
+
+  <properties>
+    <junit.version>4.11</junit.version>
+    <logback.version>1.1.2</logback.version>
+    <cobigen.version>7.1.0</cobigen.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <slf4j-api.version>1.7.7</slf4j-api.version>
+    <maven.test.path>src\test\resources\testdata\localmavenproject\maven.project</maven.test.path>
+    <skip.deployment>false</skip.deployment>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>core</artifactId>
+      <version>${cobigen.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>core-api</artifactId>
+      <version>${cobigen.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>templates-devon4j</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <!--
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>templates-devon4ng</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+     -->
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>core-test</artifactId>
+      <version>${cobigen.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli</artifactId>
+      <version>4.5.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-invoker</artifactId>
+      <version>3.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.m-m-m</groupId>
+      <artifactId>mmm-code-java-impl</artifactId>
+      <version>1.0.0-beta5</version>
+    </dependency>
+    <!-- SLF4J - API -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.7</version>
+    </dependency>
+    <!-- logback -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>1.6</version>
+    </dependency>
+    <!-- We need an agent loader for the JUnit tests in Eclipse -->
+    <dependency>
+      <groupId>com.google.googlejavaformat</groupId>
+      <artifactId>google-java-format</artifactId>
+      <version>1.7</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>23.6-jre</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Generate release with start scripts and all libs included as tgz -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptor>src/main/assembly/assembly.xml</descriptor>
+          <appendAssemblyId>false</appendAssemblyId>
+          <!--<finalName>cobigen-cli-${project.version}</finalName>-->
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Add sources jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.2.0</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
