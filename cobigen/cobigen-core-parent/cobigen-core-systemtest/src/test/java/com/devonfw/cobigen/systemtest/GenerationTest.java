@@ -2,6 +2,7 @@ package com.devonfw.cobigen.systemtest;
 
 import static com.devonfw.cobigen.test.assertj.CobiGenAsserts.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.mockito.Matchers.any;
@@ -12,6 +13,7 @@ import static org.mockito.internal.matchers.Any.ANY;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +25,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 import com.devonfw.cobigen.api.CobiGen;
+import com.devonfw.cobigen.api.exception.InvalidConfigurationException;
+import com.devonfw.cobigen.api.extension.GeneratorPluginActivator;
 import com.devonfw.cobigen.api.extension.InputReader;
 import com.devonfw.cobigen.api.extension.MatcherInterpreter;
 import com.devonfw.cobigen.api.extension.TriggerInterpreter;
@@ -108,6 +112,30 @@ public class GenerationTest extends AbstractApiTest {
     }
 
     /**
+     * Tests generation of external increments where its trigger does not match
+     * @throws IOException
+     *             test fails
+     */
+    public void testGenerationWithExternalIncrementsFailsWhenExternalTriggerNotMatch() throws IOException {
+        // given
+        Object input = PluginMockFactory.createSimpleJavaConfigurationMock();
+
+        File folder = tmpFolder.newFolder("GenerationTest");
+        File target = new File(folder, "generated.txt");
+        FileUtils.write(target, "base");
+
+        // when
+        CobiGen cobigen =
+            CobiGenFactory.create(new File(testFileRootPath + "externalIncrementsGenerationException").toURI());
+
+        // exception is thrown while getting all increments
+        assertThatThrownBy(() -> {
+            cobigen.getMatchingIncrements(input);
+        }).isInstanceOf(InvalidConfigurationException.class).hasMessageContaining(
+            "An external incrementRef to valid_increment_composition::0 is referenced from external_incrementref but its trigger does not match");
+    }
+
+    /**
      * Tests whether context properties as well as cobigen properties are correctly resolved to be served in
      * the template in the {@link ModelBuilderImpl#NS_VARIABLES} namespace.
      * @throws Exception
@@ -123,6 +151,7 @@ public class GenerationTest extends AbstractApiTest {
         };
 
         // Pre-processing: Mocking
+        GeneratorPluginActivator activator = mock(GeneratorPluginActivator.class);
         TriggerInterpreter triggerInterpreter = mock(TriggerInterpreter.class);
         MatcherInterpreter matcher = mock(MatcherInterpreter.class);
         InputReader inputReader = mock(InputReader.class);
@@ -139,7 +168,7 @@ public class GenerationTest extends AbstractApiTest {
         variables.put("contextVar", "contextValue");
         when(matcher.resolveVariables(any(MatcherTo.class), any(List.class))).thenReturn(variables);
 
-        PluginRegistry.registerTriggerInterpreter(triggerInterpreter);
+        PluginRegistry.registerTriggerInterpreter(triggerInterpreter, activator);
 
         // further setup
         File folder = tmpFolder.newFolder();
@@ -173,6 +202,7 @@ public class GenerationTest extends AbstractApiTest {
         };
 
         // Pre-processing: Mocking
+        GeneratorPluginActivator activator = mock(GeneratorPluginActivator.class);
         TriggerInterpreter triggerInterpreter = mock(TriggerInterpreter.class);
         MatcherInterpreter matcher = mock(MatcherInterpreter.class);
         InputReader inputReader = mock(InputReader.class);
@@ -189,7 +219,7 @@ public class GenerationTest extends AbstractApiTest {
         variables.put("contextVar", "contextValue");
         when(matcher.resolveVariables(any(MatcherTo.class), any(List.class))).thenReturn(variables);
 
-        PluginRegistry.registerTriggerInterpreter(triggerInterpreter);
+        PluginRegistry.registerTriggerInterpreter(triggerInterpreter, activator);
 
         // further setup
         File folder = tmpFolder.newFolder();

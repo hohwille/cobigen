@@ -11,11 +11,11 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.project>devonfw/cobigen</github.project>
-    <oasp.flatten.mode>ossrh</oasp.flatten.mode>
+    <flatten.mode>ossrh</flatten.mode>
     <slf4j.version>1.7.21</slf4j.version>
     <skip.deployment>true</skip.deployment>
     <java.version>1.8</java.version>
-    <tycho.version>1.5.1</tycho.version>
+    <tycho.version>1.6.0</tycho.version>
     <bintray.url>https://dl.bintray.com/devonfw</bintray.url>
     <!-- bintray.repository needs to be set by cmd and needs to be one of https://bintray.com/devonfw repositories -->
     <bintray.repository.url>${bintray.url}/${bintray.repository}</bintray.repository.url>
@@ -157,9 +157,15 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-deploy-plugin</artifactId>
-        <version>2.7</version>
         <configuration>
           <skip>${skip.deployment}</skip>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <configuration>
+          <skipNexusStagingDeployMojo>${skip.deployment}</skipNexusStagingDeployMojo>
         </configuration>
       </plugin>
 
@@ -167,9 +173,9 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>flatten-maven-plugin</artifactId>
-        <version>1.0.1</version>
+        <version>1.2.2</version>
         <configuration>
-          <flattenMode>${oasp.flatten.mode}</flattenMode>
+          <flattenMode>${flatten.mode}</flattenMode>
         </configuration>
         <executions>
           <execution>
@@ -213,6 +219,11 @@
 
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>2.8.2</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-eclipse-plugin</artifactId>
@@ -357,6 +368,18 @@
               </execution>
             </executions>
           </plugin>
+          <!-- Leads to wrong execution order of template deployment at the moment -->
+<!--           <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>1.6.3</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>sonartype.releases</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>false</autoReleaseAfterClose>
+            </configuration>
+          </plugin> -->
         </plugins>
       </build>
     </profile>
@@ -417,6 +440,13 @@
               <skip>true</skip>
             </configuration>
           </plugin>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <configuration>
+              <skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
+            </configuration>
+          </plugin>
           <!-- sets ${qualifiedVersion} for bintray upload -->
           <plugin>
             <groupId>org.eclipse.tycho</groupId>
@@ -435,7 +465,7 @@
           <plugin>
             <groupId>org.eclipse.tycho.extras</groupId>
             <artifactId>tycho-p2-extras-plugin</artifactId>
-            <version>1.1.0</version>
+            <version>${tycho.version}</version>
             <executions>
               <execution>
                 <id>mirror-files</id>

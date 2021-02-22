@@ -1,8 +1,12 @@
+from tempfile import TemporaryDirectory
+from typing import TypedDict
+
 class Config():
 
     def __init__(self):
         self.wiki_version_overview_page: str = "master-cobigen.asciidoc"
         self.root_path: str
+        self.temp_root_path: str
 
         self.oss: bool = False
         self.gpg_keyname: str
@@ -30,6 +34,8 @@ class Config():
 
         self.groupid_cobigen: str = "com.devonfw.cobigen"
         self.artifactid_core: str = "core"
+        self.artifactid_core_api: str = "core-api"
+        self.artifactid_core_test: str = "core-test"
 
         self.build_folder: str
         self.build_folder_abs: str
@@ -44,7 +50,9 @@ class Config():
         self.next_version: str
 
         self.expected_milestone_name: str
-        self.expected_core_milestone_name: str
+        self.expected_raw_milestone_names = None
+
+        self.temp_release_dir: TemporaryDirectory
 
     def github_closed_milestone_url(self, milestone_number: int):
         return "https://github.com/" + self.github_repo + "/milestone/" + str(milestone_number)+"?closed=1"

@@ -81,6 +81,7 @@ public class EclipseUtils {
         SWTBotCombo comboBox = bot.comboBox();
         comboBox.setText(projectPath);
 
+        bot.waitUntil(new AllJobsAreFinished(), EclipseCobiGenUtils.DEFAULT_TIMEOUT);
         SWTBotCheckBox cbCopyProjects = bot.checkBox("Copy projects into workspace");
         SWTBotButton selectAll = bot.button("Select All");
         selectAll.setFocus();
@@ -172,7 +173,15 @@ public class EclipseUtils {
                     if (cleanCobiGenConfiguration || !ResourceConstants.CONFIG_PROJECT_NAME.equals(project.getName())) {
                         project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
                         project.close(new NullProgressMonitor());
-                        project.delete(true, true, new NullProgressMonitor());
+                        // don't delete sources, which might be reused by other tests
+                        if (project.getLocationURI().toString().contains("cobigen-eclipse-test/target")) {
+                            project.delete(true, true, new NullProgressMonitor());
+                        } else {
+                            LOG.debug(
+                                "Project sources in '{}' will not be physically deleted as they are not physically imported into the test workspace '{}'",
+                                project.getLocationURI(), project.getWorkspace().getRoot().getLocationURI());
+                            project.delete(false, true, new NullProgressMonitor());
+                        }
                     }
                 }
                 break;

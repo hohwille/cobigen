@@ -5,6 +5,7 @@ import sys
 
 from git.cmd import Git
 from git.exc import InvalidGitRepositoryError
+from git.repo.base import Repo
 
 from tools.config import Config
 from tools.git_repo import GitRepo
@@ -16,6 +17,7 @@ from tools.validation import is_valid_branch
 
 def init_non_git_config(config: Config):
     __process_params(config)
+
     def __check_path(path):
         if not os.path.exists(path):
             log_error("Path does not exist.")
@@ -23,13 +25,19 @@ def init_non_git_config(config: Config):
             log_error("Path is not a directory.")
         return os.path.exists(path) & os.path.isdir(path)
 
-    def __set_path(config: Config, attr : str):
-        msg = {
-            'root_path' : "path of the repository to work on",
-        }
+    def __set_path(config: Config, attr: str):
         while True:
             if not hasattr(config, attr) or not getattr(config, attr):
-                path = prompt_enter_value(msg[attr])
+                path = config.temp_root_path
+                if not hasattr(config, "two_factor_authentication"):
+                    config.two_factor_authentication = prompt_yesno_question(
+                        "Are you using two-factor authentication on GitHub?")
+                if config.two_factor_authentication:
+                    repository_url = "git@github.com:" + config.github_repo + ".git"
+                else:
+                    repository_url = "https://github.com/" + config.github_repo + ".git"
+                log_info("Cloning temporary repository from " + repository_url + " to " + str(path) + " for processing the release...")
+                Repo.clone_from(repository_url, path, multi_options=["--config core.longpaths=true"])
             else:
                 path = getattr(config, attr)  # set by script param
 
@@ -45,17 +53,17 @@ def init_non_git_config(config: Config):
             try:
                 Git(path)
             except InvalidGitRepositoryError:
-                log_error("Path is not a git repository.")
+                log_error("Path " + path + " is not a git repository.")
 
-            setattr(config,attr,path)
+            setattr(config, attr, path)
 
             info = {
                 "root_path": "Executing release in path '",
             }
-            log_info(info[attr] + str(getattr(config,attr)) + "'")
+            log_info(info[attr] + str(getattr(config, attr)) + "'")
             break
 
-    __set_path(config,"root_path")
+    ###################################################################################################################################
 
     if not hasattr(config, 'github_repo'):
         config.github_repo = ""
@@ -63,11 +71,12 @@ def init_non_git_config(config: Config):
     while(not repo_pattern.match(config.github_repo)):
         if config.github_repo:
             log_error("'" + config.github_repo + "' is not a valid GitHub repository name.")
-        config.github_repo = prompt_enter_value("repository to be released (e.g. devonfw/cobigen)")
+        config.github_repo = prompt_enter_value("repository to be released (default on empty: devonfw/cobigen)", "devonfw/cobigen")
     log_info("Releasing against GitHub repository '"+config.github_repo+"'")
     config.git_repo_name = config.github_repo.split(sep='/')[1]
     config.git_repo_org = config.github_repo.split(sep='/')[0]
 
+    __set_path(config, "root_path")
 
     if not config.oss:
         config.oss = prompt_yesno_question("Should the release been published to maven central as open source?")
@@ -80,11 +89,12 @@ If you are unsure about this, please stop here and clarify, whether
 gpg.keyname = """)
 
         if not config.gpg_loaded:
-            config.gpg_loaded = prompt_yesno_question("Make sure the gpg key '" + config.gpg_keyname + "' is loaded by tools like Kleopatra before continuing! Continue?")
+            config.gpg_loaded = prompt_yesno_question("Make sure the gpg key '" + config.gpg_keyname +
+                                                      "' is loaded by tools like Kleopatra before continuing! Continue?")
             if not config.gpg_loaded:
                 sys.exit()
 
-        #Check whether the user has gpg2 installed
+        # Check whether the user has gpg2 installed
         if is_tool("gpg2"):
             if not hasattr(config, "gpg_executable"):
                 log_info("gpg2 installation found")
@@ -96,15 +106,17 @@ gpg.keyname = """)
         else:
             log_error("gpg2 nor gpg are installed. Please install them on your computer (system path) or either use command -Dgpg.executable='gpg2'")
 
+
 def is_tool(name):
     """Check whether `name` is on PATH and marked as executable."""
     from shutil import which
 
     return which(name) is not None
 
+
 def init_git_dependent_config(config: Config, github: GitHub, git_repo: GitRepo):
 
-    if not hasattr(config,"branch_to_be_released"):
+    if not hasattr(config, "branch_to_be_released"):
         while(True):
             config.branch_to_be_released = prompt_enter_value("the name of the branch to be released")
             if(is_valid_branch(config)):
@@ -113,7 +125,7 @@ def init_git_dependent_config(config: Config, github: GitHub, git_repo: GitRepo)
         log_info("Branch to be released: {}".format(config.branch_to_be_released))
 
     version_pattern = re.compile(r'[0-9]\.[0-9]\.[0-9]')
-    if not hasattr(config,"release_version"):
+    if not hasattr(config, "release_version"):
         config.release_version = ""
         while not version_pattern.match(config.release_version):
             config.release_version = prompt_enter_value("release version number without 'v' in front")
@@ -132,7 +144,7 @@ def init_git_dependent_config(config: Config, github: GitHub, git_repo: GitRepo)
     config.build_artifacts_root_search_path = __get_build_artifacts_root_search_path(config)
     config.cobigenwiki_title_name = __get_cobigenwiki_title_name(config)
     config.tag_name = __get_tag_name(config) + config.release_version
-    config.tag_core_name = __get_tag_name_specific_branch(config, config.branch_core)
+    config.tag_core_name = __get_tag_name(config, config.branch_core)
 
     if git_repo.exists_tag(config.tag_name):
         log_error("Git tag " + config.tag_name + " already exists. Maybe you entered the wrong release version? Please fix the problem and try again.")
@@ -141,14 +153,14 @@ def init_git_dependent_config(config: Config, github: GitHub, git_repo: GitRepo)
     config.issue_label_name = config.tag_name[:-7]
 
     config.expected_milestone_name = config.tag_name[:-7] + "-v" + config.release_version
-    config.expected_core_milestone_name = config.tag_core_name[:-2] + "-v"
+    config.expected_raw_milestone_names = __get_raw_milestone_names(config)
     milestone = github.find_release_milestone()
     if milestone:
-        log_info("Milestone '"+milestone.title+"' found!")
+        log_info("Milestone '" + milestone.title + "' found!")
     else:
         log_error("Milestone not found! Searched for milestone with name '" + config.expected_milestone_name+"'. Aborting...")
         sys.exit()
-    if not hasattr(config,"github_issue_no"):
+    if not hasattr(config, "github_issue_no"):
         while(True):
             github_issue_no: str = prompt_enter_value(
                 "release issue number without # prefix in case you already created one or type 'new' to create an issue automatically")
@@ -190,11 +202,12 @@ def __get_build_folder(config: Config):
         'dev_jsonplugin': os.path.join('cobigen', 'cobigen-jsonplugin'),
         'dev_tempeng_freemarker': os.path.join('cobigen', 'cobigen-templateengines', 'cobigen-tempeng-freemarker'),
         'dev_tempeng_velocity': os.path.join('cobigen', 'cobigen-templateengines', 'cobigen-tempeng-velocity'),
+        'dev_cli': os.path.join('cobigen-cli')
     }
 
     val = build_folder.get(config.branch_to_be_released, "")
     if not val:
-        log_error('Branch name unknown to script. Please edit function get_build_folder in scripts/**/__config.py')
+        log_error('Branch name unknown to script. Please edit function get_build_folder in scripts/src/tools/initialization.py')
         sys.exit()
     return val
 
@@ -214,17 +227,17 @@ def __get_cobigenwiki_title_name(config: Config):
         'dev_jsonplugin': 'CobiGen - JSON Plug-in',
         'dev_tempeng_freemarker': 'CobiGen - FreeMaker Template Engine',
         'dev_tempeng_velocity': 'CobiGen - Velocity Template Engine',
+        'dev_cli': 'CobiGen CLI'
     }
 
     val = wiki_description_name.get(config.branch_to_be_released, "")
     if not val:
-        log_error('Branch name unknown to script. Please edit function get_cobigenwiki_title_name in scripts/**/__config.py')
+        log_error('Branch name unknown to script. Please edit function get_cobigenwiki_title_name in scripts/src/tools/initialization.py')
         sys.exit()
     return val
 
-
-def __get_tag_name(config: Config):
-    tag_name = {
+def __get_tag_names(config: Config):
+    return {
         config.branch_core: 'cobigen-core/v',
         config.branch_mavenplugin: 'cobigen-maven/v',
         config.branch_eclipseplugin: 'cobigen-eclipse/v',
@@ -238,59 +251,25 @@ def __get_tag_name(config: Config):
         'dev_jsonplugin': 'cobigen-jsonplugin/v',
         'dev_tempeng_freemarker': 'cobigen-tempeng-freemarker/v',
         'dev_tempeng_velocity': 'cobigen-tempeng-velocity/v',
+        'dev_cli': 'cobigen-cli/v'
     }
 
-    val = tag_name.get(config.branch_to_be_released, "")
+def __get_tag_name(config: Config, branch_to_get_tag: str = None):
+    tag_names = __get_tag_names(config)
+
+    if branch_to_get_tag is None:
+        val = tag_names.get(config.branch_to_be_released, "")
+    else:
+        val = tag_names.get(branch_to_get_tag, "")
+
     if not val:
-        log_error('Branch name unknown to script. Please edit function get_tag_name in scripts/**/__config.py')
+        log_error('Branch name unknown to script. Please edit function get_tag_names in scripts/src/tools/initialization.py')
         sys.exit()
     return val
 
-def __get_tag_name_specific_branch(config: Config, branch_to_get_tag: str):
-    tag_name = {
-        config.branch_core: 'cobigen-core/v',
-        config.branch_mavenplugin: 'cobigen-maven/v',
-        config.branch_eclipseplugin: 'cobigen-eclipse/v',
-        config.branch_javaplugin: 'cobigen-javaplugin/v',
-        'dev_xmlplugin': 'cobigen-xmlplugin/v',
-        'dev_htmlmerger': 'cobigen-htmlplugin/v',
-        config.branch_openapiplugin: 'cobigen-openapiplugin/v',
-        'dev_tsplugin': 'cobigen-tsplugin/v',
-        'dev_textmerger': 'cobigen-textmerger/v',
-        'dev_propertyplugin': 'cobigen-propertyplugin/v',
-        'dev_jsonplugin': 'cobigen-jsonplugin/v',
-        'dev_tempeng_freemarker': 'cobigen-tempeng-freemarker/v',
-        'dev_tempeng_velocity': 'cobigen-tempeng-velocity/v',
-    }
-
-    val = tag_name.get(branch_to_get_tag, "")
-    if not val:
-        log_error('Branch name unknown to script. Please edit function get_tag_name in scripts/**/__config.py')
-        sys.exit()
-    return val
-
-def __get_wiki_name_specific_branch(config: Config, branch_to_get_wikiname: str):
-    wiki_name = {
-        config.branch_core: 'cobigen-core',
-        config.branch_mavenplugin: 'cobigen-maven',
-        config.branch_eclipseplugin: 'cobigen-eclipse',
-        config.branch_javaplugin: 'cobigen-javaplugin',
-        'dev_xmlplugin': 'cobigen-xmlplugin',
-        'dev_htmlmerger': 'cobigen-htmlplugin',
-        config.branch_openapiplugin: 'cobigen-openapiplugin',
-        'dev_tsplugin': 'cobigen-tsplugin',
-        'dev_textmerger': 'cobigen-textmerger',
-        'dev_propertyplugin': 'cobigen-propertyplugin',
-        'dev_jsonplugin': 'cobigen-jsonplugin',
-        'dev_tempeng_freemarker': 'cobigen-tempeng-freemarker',
-        'dev_tempeng_velocity': 'cobigen-tempeng-velocity',
-        'master': 'master-cobigen',
-    }
-    if branch_to_get_wikiname not in wiki_name:
-        log_error('Branch name unknown to script. Please edit function get_tag_name in scripts/**/__config.py')
-        sys.exit()
-    return wiki_name[branch_to_get_wikiname]
-
+# returns a dictionary with expected milestone names without versions
+def __get_raw_milestone_names(config: Config):
+    return dict((k, v[:-2] + "-v") for k, v in __get_tag_names(config).items())
 
 def __get_build_artifacts_root_search_path(config: Config):
     target_folders = {
@@ -298,6 +277,7 @@ def __get_build_artifacts_root_search_path(config: Config):
         config.branch_javaplugin: '',  # search for target folders in every submodule
         config.branch_openapiplugin: '',  # search for target folders in every submodule
         config.branch_mavenplugin: '',  # search for target folders in every submodule
+        'dev_cli': '',  # search for target folders in every submodule
         config.branch_eclipseplugin: 'cobigen-eclipse-updatesite/target'
     }
 
