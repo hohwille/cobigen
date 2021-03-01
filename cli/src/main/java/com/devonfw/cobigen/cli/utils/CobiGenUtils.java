@@ -128,7 +128,7 @@ public class CobiGenUtils {
      *             throws {@link InputReaderException} when the input file could not be converted to a valid
      *             CobiGen input
      */
-    public static Object getValidCobiGenInput(CobiGen cg, File inputFile, Boolean isJavaInput)
+    public static Object getValidCobiGenInput(CobiGen cg, File inputFile, boolean isJavaInput)
         throws InputReaderException {
         Object input;
         // If it is a Java file, we need the class loader

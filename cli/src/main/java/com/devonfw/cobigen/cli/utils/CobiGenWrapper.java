@@ -32,7 +32,10 @@ public class CobiGenWrapper {
       if (resource == null) {
         throw new IllegalStateException("CobiGen-Templates have not been found!");
       } else {
-        String url = resource.toString().replace("src/main/templates/context.xml", "");
+        String url = resource.toString().replace("/src/main/templates/context.xml", "");
+        if (url.endsWith("!")) {
+          url = url.substring(0, url.length() - 1);
+        }
         URI uri = URI.create(url);
         this.cobiGen = CobiGenFactory.create(uri);
         this.templatesFolder = Paths.get(uri);
